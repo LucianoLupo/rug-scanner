@@ -17,6 +17,8 @@ const ROUTERS: Record<string, Record<Chain, string | null>> = {
   },
 };
 
+const AERODROME_FACTORY = '0x420DD381b31aEf6683db6B902084cB0FFECe40Da';
+
 // 0.01 ETH in wei
 const BUY_AMOUNT_WEI = 10000000000000000n;
 
@@ -39,6 +41,29 @@ function encodeGetAmountsOut(amountIn: bigint, path: string[]): string {
   const elements = path.map(padAddress).join('');
 
   return selector + amountPad + offset + length + elements;
+}
+
+function encodeAerodromeGetAmountsOut(
+  amountIn: bigint,
+  from: string,
+  to: string,
+  stable: boolean,
+  factory: string,
+): string {
+  // getAmountsOut(uint256,(address,address,bool,address)[])
+  const selector = '0x5509a1ac';
+  const amountPad = padUint256(amountIn);
+  // offset to dynamic routes array (64 bytes = 0x40)
+  const offset = padUint256(64n);
+  // array length = 1 route
+  const length = padUint256(1n);
+  // Route struct: (address from, address to, bool stable, address factory)
+  const fromPad = padAddress(from);
+  const toPad = padAddress(to);
+  const stablePad = padUint256(stable ? 1n : 0n);
+  const factoryPad = padAddress(factory);
+
+  return selector + amountPad + offset + length + fromPad + toPad + stablePad + factoryPad;
 }
 
 function decodeAmountsOut(result: string): bigint[] {
@@ -87,13 +112,14 @@ export async function simulateTrade(
     if (!router) return skipped;
 
     const weth = WETH[chain];
-    const buyPath = [weth, tokenAddress];
-    const sellPath = [tokenAddress, weth];
+    const isAerodrome = dex === 'aerodrome';
 
     // Step 1: Simulate buy — getAmountsOut(0.01 ETH, [WETH, token])
     let tokensOut: bigint;
     try {
-      const buyData = encodeGetAmountsOut(BUY_AMOUNT_WEI, buyPath);
+      const buyData = isAerodrome
+        ? encodeAerodromeGetAmountsOut(BUY_AMOUNT_WEI, weth, tokenAddress, false, AERODROME_FACTORY)
+        : encodeGetAmountsOut(BUY_AMOUNT_WEI, [weth, tokenAddress]);
       const buyResult = await provider.call(router, buyData);
       const buyAmounts = decodeAmountsOut(buyResult);
       tokensOut = buyAmounts[buyAmounts.length - 1];
@@ -108,7 +134,9 @@ export async function simulateTrade(
     let wethBack: bigint;
     let canSell = true;
     try {
-      const sellData = encodeGetAmountsOut(tokensOut, sellPath);
+      const sellData = isAerodrome
+        ? encodeAerodromeGetAmountsOut(tokensOut, tokenAddress, weth, false, AERODROME_FACTORY)
+        : encodeGetAmountsOut(tokensOut, [tokenAddress, weth]);
       const sellResult = await provider.call(router, sellData);
       const sellAmounts = decodeAmountsOut(sellResult);
       wethBack = sellAmounts[sellAmounts.length - 1];

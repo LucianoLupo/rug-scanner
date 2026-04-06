@@ -7,7 +7,10 @@ const WETH: Record<Chain, string> = {
 };
 
 const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA68';
-const UNISWAP_V3_FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
+const UNISWAP_V3_FACTORY: Record<Chain, string> = {
+  ethereum: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+  base: '0x33128a8fC17869897dcE68Ed026d694621f6FDfD',
+};
 const AERODROME_FACTORY = '0x420DD381b31aEf6683db6B902084cB0FFECe40Da';
 
 const LOCK_CONTRACTS: { name: string; address: string }[] = [
@@ -58,14 +61,15 @@ async function discoverPools(
     // factory call failed, skip
   }
 
-  // Uniswap V3 — getPool(address,address,uint24) — Ethereum only
-  if (chain === 'ethereum') {
+  // Uniswap V3 — getPool(address,address,uint24) — both Ethereum and Base
+  {
+    const v3Factory = UNISWAP_V3_FACTORY[chain];
     const fees = [500, 3000, 10000];
     for (const fee of fees) {
       try {
         const feePad = fee.toString(16).padStart(64, '0');
         const data = '0x1698ee82' + tokenPad + wethPad + feePad;
-        const result = await provider.call(UNISWAP_V3_FACTORY, data);
+        const result = await provider.call(v3Factory, data);
         const addr = decodeAddress(result);
         if (addr !== ZERO_ADDRESS) {
           pools.push({ address: addr, dex: 'uniswap_v3', type: 'v3' });
@@ -81,7 +85,7 @@ async function discoverPools(
   if (chain === 'base') {
     try {
       const stablePad = '0'.repeat(64); // false
-      const data = '0xcc56b2c5' + tokenPad + wethPad + stablePad;
+      const data = '0x79bc57d5' + tokenPad + wethPad + stablePad;
       const result = await provider.call(AERODROME_FACTORY, data);
       const addr = decodeAddress(result);
       if (addr !== ZERO_ADDRESS) {
