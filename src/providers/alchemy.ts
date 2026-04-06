@@ -24,7 +24,9 @@ type AssetTransfersResult = {
 type AssetTransfersParams = {
   fromBlock: string;
   toBlock: string;
-  contractAddresses: string[];
+  fromAddress?: string;
+  toAddress?: string;
+  contractAddresses?: string[];
   category: string[];
   maxCount: number;
 };
@@ -85,13 +87,17 @@ export class AlchemyProvider {
   }
 
   async getAssetTransfers(params: AssetTransfersParams): Promise<AssetTransfer[]> {
-    const result = await this.rpc<AssetTransfersResult>('alchemy_getAssetTransfers', [{
+    const rpcParams: Record<string, unknown> = {
       fromBlock: params.fromBlock,
       toBlock: params.toBlock,
-      contractAddresses: params.contractAddresses,
       category: params.category,
       maxCount: `0x${params.maxCount.toString(16)}`,
-    }]);
+    };
+    if (params.contractAddresses) rpcParams.contractAddresses = params.contractAddresses;
+    if (params.fromAddress) rpcParams.fromAddress = params.fromAddress;
+    if (params.toAddress) rpcParams.toAddress = params.toAddress;
+
+    const result = await this.rpc<AssetTransfersResult>('alchemy_getAssetTransfers', [rpcParams]);
     return result.transfers;
   }
 
