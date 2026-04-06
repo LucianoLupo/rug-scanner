@@ -22,7 +22,19 @@ import type {
   MarketData,
 } from './types/index.js';
 
-const app = new Hono<{ Bindings: Env }>();
+function getEnv(): Env {
+  return {
+    ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY ?? '',
+    BASESCAN_API_KEY: process.env.BASESCAN_API_KEY ?? '',
+    ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY ?? '',
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL ?? '',
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN ?? '',
+    X402_WALLET_ADDRESS: process.env.X402_WALLET_ADDRESS ?? '',
+    X402_FACILITATOR_URL: process.env.X402_FACILITATOR_URL ?? '',
+  };
+}
+
+const app = new Hono();
 
 // Simple in-memory rate limiter: 10 requests per second per IP
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -98,12 +110,13 @@ app.get('/health', (c) => {
 });
 
 app.use('/scan', async (c, next) => {
-  const middleware = createX402Middleware(c.env);
+  const env = getEnv();
+  const middleware = createX402Middleware(env);
   return middleware(c, next);
 });
 
 app.post('/scan', async (c) => {
-  const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown';
+  const ip = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown';
   if (isRateLimited(ip)) {
     return c.json({ error: 'Rate limit exceeded' }, 429);
   }
@@ -119,11 +132,12 @@ app.post('/scan', async (c) => {
   }
 
   const { token, chain } = parsed.data;
+  const env = getEnv();
 
   // Check cache
   const cache = new CacheService(
-    c.env.UPSTASH_REDIS_REST_URL,
-    c.env.UPSTASH_REDIS_REST_TOKEN,
+    env.UPSTASH_REDIS_REST_URL,
+    env.UPSTASH_REDIS_REST_TOKEN,
   );
   const cacheKey = `scan:${chain}:${token}`;
   const cached = await cache.get<ScanResult>(cacheKey);
@@ -131,9 +145,9 @@ app.post('/scan', async (c) => {
     return c.json(cached);
   }
 
-  const provider = new AlchemyProvider(c.env.ALCHEMY_API_KEY, chain);
+  const provider = new AlchemyProvider(env.ALCHEMY_API_KEY, chain);
   const explorerKey =
-    chain === 'base' ? c.env.BASESCAN_API_KEY : c.env.ETHERSCAN_API_KEY;
+    chain === 'base' ? env.BASESCAN_API_KEY : env.ETHERSCAN_API_KEY;
 
   let checksCompleted = 0;
 
