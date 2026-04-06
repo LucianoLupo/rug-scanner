@@ -1,0 +1,13 @@
+{
+  "accepts": "x402",
+  "version": "1",
+  "endpoints": [
+    {
+      "path": "/scan",
+      "method": "POST",
+      "price": "0.05 USDC",
+      "network": "base-sepolia",
+      "facilitator": "https://x402.org/facilitator"
+    }
+  ]
+}
