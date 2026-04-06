@@ -13,13 +13,33 @@ const UNISWAP_V3_FACTORY: Record<Chain, string> = {
 };
 const AERODROME_FACTORY = '0x420DD381b31aEf6683db6B902084cB0FFECe40Da';
 
-const LOCK_CONTRACTS: { name: string; address: string }[] = [
-  { name: 'UNCX', address: '0x663A5C229c09b049E36dCc11a9B0d4a8Eb9db214' },
-  { name: 'Team Finance', address: '0xE2fE530C047f2d85298b07D9333C05737f1435fB' },
-];
+const LOCK_CONTRACTS: Record<Chain, { name: string; address: string }[]> = {
+  ethereum: [
+    { name: 'UNCX', address: '0x663A5C229c09b049E36dCc11a9B0d4a8Eb9db214' },
+    { name: 'Team Finance', address: '0xE2fE530C047f2d85298b07D9333C05737f1435fB' },
+  ],
+  base: [
+    { name: 'UNCX', address: '0xFD235968e65B0990584585763f837A5b5330e6DE' },
+    { name: 'Team Finance', address: '0xe2eCEBcfc12F231e9468F8c1C3FC1aB45AC9268C' },
+  ],
+};
 
-const ETH_PRICE_USD = 3000;
 const ZERO_ADDRESS = '0x' + '0'.repeat(40);
+
+async function fetchEthPriceUsd(): Promise<number> {
+  const fallback = 3000;
+  try {
+    const response = await fetch(
+      'https://api.dexscreener.com/latest/dex/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    );
+    if (!response.ok) return fallback;
+    const json = (await response.json()) as { pairs?: Array<{ priceUsd?: string | null }> | null };
+    const price = json.pairs?.[0]?.priceUsd;
+    return price ? parseFloat(price) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function padAddress(addr: string): string {
   return addr.slice(2).toLowerCase().padStart(64, '0');
@@ -31,6 +51,19 @@ function decodeAddress(hex: string): string {
 
 function decodeUint112(hex: string): bigint {
   return BigInt('0x' + hex.replace(/^0x/, ''));
+}
+
+async function getTokenDecimals(
+  provider: AlchemyProvider,
+  tokenAddress: string,
+): Promise<number> {
+  try {
+    // decimals() selector: 0x313ce567
+    const result = await provider.call(tokenAddress, '0x313ce567');
+    return Number(BigInt(result));
+  } catch {
+    return 18; // fallback
+  }
 }
 
 type PoolInfo = {
@@ -123,9 +156,10 @@ async function getV2Reserves(
 async function checkLpLocked(
   provider: AlchemyProvider,
   poolAddress: string,
+  chain: Chain,
 ): Promise<{ locked: boolean; lockProvider: string | null }> {
   // balanceOf(address) selector 0x70a08231
-  for (const lock of LOCK_CONTRACTS) {
+  for (const lock of LOCK_CONTRACTS[chain]) {
     try {
       const data = '0x70a08231' + padAddress(lock.address);
       const result = await provider.call(poolAddress, data);
@@ -171,6 +205,7 @@ export async function analyzeLiquidity(
 
   const primary = pools[0];
   let totalUsd = 0;
+  const ethPriceUsd = await fetchEthPriceUsd();
 
   if (primary.type === 'v2') {
     try {
@@ -181,21 +216,15 @@ export async function analyzeLiquidity(
       );
 
       const wethEth = Number(wethReserve) / 1e18;
-      const wethUsd = wethEth * ETH_PRICE_USD;
+      const wethUsd = wethEth * ethPriceUsd;
 
-      if (marketData?.price_usd) {
-        // Use market price for token side + ETH estimate for WETH side
-        // For V2, total liquidity ≈ 2x the value of one side
-        totalUsd = wethUsd * 2;
-      } else {
-        // Without market data, estimate from WETH side (total ≈ 2x WETH value)
-        totalUsd = wethUsd * 2;
-      }
-
-      // Also factor in token reserve if we have price
+      // Use market price for token side if available, otherwise estimate from WETH
       if (marketData?.price_usd && tokenReserve > 0n) {
-        const tokenValue = Number(tokenReserve) / 1e18 * marketData.price_usd;
+        const tokenDecimals = await getTokenDecimals(provider, tokenAddress);
+        const tokenValue = Number(tokenReserve) / 10 ** tokenDecimals * marketData.price_usd;
         totalUsd = wethUsd + tokenValue;
+      } else {
+        totalUsd = wethUsd * 2;
       }
     } catch {
       // reserves call failed, leave totalUsd at 0
@@ -203,7 +232,7 @@ export async function analyzeLiquidity(
   }
   // V3 pools use concentrated liquidity — skip reserve estimation for now
 
-  const { locked, lockProvider } = await checkLpLocked(provider, primary.address);
+  const { locked, lockProvider } = await checkLpLocked(provider, primary.address, chain);
 
   const data: LiquidityData = {
     total_usd: Math.round(totalUsd * 100) / 100,

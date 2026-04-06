@@ -5,7 +5,7 @@ import { functionSelectors } from 'evmole';
 const MINT_SELECTORS = ['40c10f19', 'a0712d68', '4e6ec247'];
 const BLACKLIST_SELECTORS = ['44337ea1', '0ecb93c0', 'f9f92be4'];
 const PAUSE_SELECTORS = ['8456cb59', '02329a29'];
-const FEE_SELECTORS = ['69fe0e2d', 'cbccefb2', 'aa4bde28'];
+const FEE_SELECTORS = ['69fe0e2d'];
 
 const OWNER_SELECTOR = '0x8da5cb5b';
 const PROXY_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
