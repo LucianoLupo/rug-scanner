@@ -24,6 +24,22 @@ import type {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Simple in-memory rate limiter: 10 requests per second per IP
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 1000;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT;
+}
+
 const scanRequestSchema = z.object({
   token: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid token address'),
   chain: z.enum(['base', 'ethereum']),
@@ -87,6 +103,11 @@ app.use('/scan', async (c, next) => {
 });
 
 app.post('/scan', async (c) => {
+  const ip = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'unknown';
+  if (isRateLimited(ip)) {
+    return c.json({ error: 'Rate limit exceeded' }, 429);
+  }
+
   const body = await c.req.json();
   const parsed = scanRequestSchema.safeParse(body);
 

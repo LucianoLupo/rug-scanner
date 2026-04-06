@@ -5,11 +5,17 @@ type EtherscanResponse = {
   result: Array<{ SourceCode: string }>;
 };
 
+const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+
 export async function checkSourceVerified(
   chain: Chain,
   tokenAddress: string,
   apiKey: string,
 ): Promise<{ verified: boolean; flags: Flag[] }> {
+  if (!ADDRESS_REGEX.test(tokenAddress)) {
+    throw new Error('Invalid token address');
+  }
+
   const baseUrl = chain === 'base'
     ? 'https://api.basescan.org/api'
     : 'https://api.etherscan.io/api';
@@ -17,7 +23,18 @@ export async function checkSourceVerified(
   const url = `${baseUrl}?module=contract&action=getsourcecode&address=${tokenAddress}&apikey=${apiKey}`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) {
+      return {
+        verified: false,
+        flags: [{
+          severity: 'high' as const,
+          type: 'unverified_source',
+          value: true,
+          detail: `Source verification check failed (HTTP ${response.status})`,
+        }],
+      };
+    }
     const json = (await response.json()) as EtherscanResponse;
 
     const verified =

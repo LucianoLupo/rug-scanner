@@ -22,10 +22,25 @@ const CHAIN_MAP: Record<Chain, string> = {
   ethereum: 'ethereum',
 };
 
+const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+
 export async function getTokenPairs(chain: Chain, tokenAddress: string): Promise<MarketData> {
+  if (!ADDRESS_REGEX.test(tokenAddress)) {
+    throw new Error('Invalid token address');
+  }
+
   const response = await fetch(
-    `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`
+    `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`,
+    { signal: AbortSignal.timeout(5000) },
   );
+  if (!response.ok) {
+    return {
+      price_usd: null,
+      volume_24h: null,
+      pair_age_hours: null,
+      price_change_24h_pct: null,
+    };
+  }
   const json = (await response.json()) as DexScreenerResponse;
 
   const chainId = CHAIN_MAP[chain];

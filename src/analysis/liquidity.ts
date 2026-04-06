@@ -31,6 +31,7 @@ async function fetchEthPriceUsd(): Promise<number> {
   try {
     const response = await fetch(
       'https://api.dexscreener.com/latest/dex/tokens/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      { signal: AbortSignal.timeout(5000) },
     );
     if (!response.ok) return fallback;
     const json = (await response.json()) as { pairs?: Array<{ priceUsd?: string | null }> | null };

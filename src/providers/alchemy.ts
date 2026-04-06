@@ -48,16 +48,28 @@ export class AlchemyProvider {
   }
 
   private async rpc<T>(method: string, params: unknown[] = []): Promise<T> {
-    const response = await fetch(this.getChainUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: 1,
-        method,
-        params,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(this.getChainUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method,
+          params,
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch (err) {
+      // Mask API key from network error messages
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`RPC fetch failed: ${msg.replace(this.apiKey, '***')}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(`RPC HTTP error: ${response.status}`);
+    }
 
     const json = (await response.json()) as JsonRpcResponse<T>;
     if (json.error) {
