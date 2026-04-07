@@ -96,4 +96,57 @@ describe('Known Rug Patterns', () => {
     expect(result.verdict).toBe('MEDIUM_RISK');
     expect(result.score).toBe(2);
   });
+
+  it('top5_holders_above_50 → MEDIUM_RISK', () => {
+    const flags: Flag[] = [
+      { type: 'top5_holders_above_50', severity: 'critical', value: 65.0, detail: 'Top 5 holders control 65.0% of supply' },
+    ];
+    const result = getVerdict(flags);
+    expect(result.verdict).toBe('MEDIUM_RISK');
+  });
+});
+
+describe('Scorer Blindspot Tests', () => {
+  it('zero_supply alone → HIGH_RISK (1 high flag, triggers generic high count)', () => {
+    const flags: Flag[] = [flag('zero_supply', 'high')];
+    const result = getVerdict(flags);
+    // Only 1 high flag — no specific rule matches, falls to score >= 1 → LOW_RISK
+    // This documents the current behavior as a known blindspot
+    expect(result.verdict).toBe('LOW_RISK');
+    expect(result.score).toBe(1);
+  });
+
+  it('no_bytecode alone → LOW_RISK (1 critical flag, no specific rule)', () => {
+    const flags: Flag[] = [flag('no_bytecode', 'critical')];
+    const result = getVerdict(flags);
+    // Only 1 critical flag — no named rule matches, falls to score >= 1 → LOW_RISK
+    // This documents a blindspot: a contract with no bytecode should arguably be higher risk
+    expect(result.verdict).toBe('LOW_RISK');
+    expect(result.score).toBe(1);
+  });
+
+  it('has_fee_setter alone → LOW_RISK (1 high flag, no specific rule)', () => {
+    const flags: Flag[] = [flag('has_fee_setter', 'high')];
+    const result = getVerdict(flags);
+    expect(result.verdict).toBe('LOW_RISK');
+    expect(result.score).toBe(1);
+  });
+
+  it('no_bytecode + zero_supply → MEDIUM_RISK (2 high/critical flags)', () => {
+    const flags: Flag[] = [
+      flag('no_bytecode', 'critical'),
+      flag('zero_supply', 'high'),
+    ];
+    const result = getVerdict(flags);
+    // 2 flags with severity >= high → triggers the generic "2+ high/critical" rule
+    expect(result.verdict).toBe('MEDIUM_RISK');
+    expect(result.score).toBe(2);
+  });
+
+  it('can_blacklist alone (without can_mint) → LOW_RISK', () => {
+    const flags: Flag[] = [flag('can_blacklist', 'high')];
+    const result = getVerdict(flags);
+    expect(result.verdict).toBe('LOW_RISK');
+    expect(result.score).toBe(1);
+  });
 });
