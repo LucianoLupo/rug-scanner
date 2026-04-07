@@ -1,27 +1,31 @@
+import { paymentMiddlewareFromConfig } from '@x402/hono';
+import { HTTPFacilitatorClient } from '@x402/core/server';
 import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../types/index.js';
 
-// x402 payment middleware
-// Disabled until CDP facilitator keys are configured
-// To enable: install @x402/hono + @x402/evm, uncomment below
-export function createX402Middleware(_env: Env): MiddlewareHandler {
-  // Passthrough for now — x402 payment gate disabled until facilitator is configured
-  return async (_c, next) => {
-    await next();
-  };
+const BASE_MAINNET = 'eip155:8453' as const;
 
-  /* Enable when CDP keys are ready:
-  const { paymentMiddlewareFromConfig } = await import('@x402/hono');
-  return paymentMiddlewareFromConfig({
-    '/scan': {
-      accepts: {
-        scheme: 'exact',
-        payTo: env.X402_WALLET_ADDRESS,
-        price: '$0.05',
-        network: 'eip155:8453', // Base mainnet
+export function createX402Middleware(env: Env): MiddlewareHandler {
+  // Skip x402 if wallet not configured (local dev without payment gate)
+  if (!env.X402_WALLET_ADDRESS) {
+    return async (_c, next) => { await next(); };
+  }
+
+  const facilitatorUrl = env.X402_FACILITATOR_URL || 'https://api.cdp.coinbase.com/platform/v2/x402';
+  const facilitator = new HTTPFacilitatorClient({ url: facilitatorUrl });
+
+  return paymentMiddlewareFromConfig(
+    {
+      'POST /scan': {
+        accepts: {
+          scheme: 'exact',
+          payTo: env.X402_WALLET_ADDRESS,
+          price: '$0.05',
+          network: BASE_MAINNET,
+        },
+        description: 'Rug Scanner — on-chain token risk analysis',
       },
-      description: 'Rug Scanner token analysis',
     },
-  });
-  */
+    facilitator,
+  );
 }
