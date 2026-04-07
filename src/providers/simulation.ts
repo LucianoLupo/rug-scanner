@@ -22,15 +22,15 @@ const AERODROME_FACTORY = '0x420DD381b31aEf6683db6B902084cB0FFECe40Da';
 // 0.01 ETH in wei
 const BUY_AMOUNT_WEI = 10000000000000000n;
 
-function padAddress(addr: string): string {
+export function padAddress(addr: string): string {
   return addr.slice(2).toLowerCase().padStart(64, '0');
 }
 
-function padUint256(value: bigint): string {
+export function padUint256(value: bigint): string {
   return value.toString(16).padStart(64, '0');
 }
 
-function encodeGetAmountsOut(amountIn: bigint, path: string[]): string {
+export function encodeGetAmountsOut(amountIn: bigint, path: string[]): string {
   const selector = '0xd06ca61f';
   const amountPad = padUint256(amountIn);
   // offset to dynamic array (64 bytes = 0x40)
@@ -43,7 +43,7 @@ function encodeGetAmountsOut(amountIn: bigint, path: string[]): string {
   return selector + amountPad + offset + length + elements;
 }
 
-function encodeAerodromeGetAmountsOut(
+export function encodeAerodromeGetAmountsOut(
   amountIn: bigint,
   from: string,
   to: string,
@@ -66,7 +66,7 @@ function encodeAerodromeGetAmountsOut(
   return selector + amountPad + offset + length + fromPad + toPad + stablePad + factoryPad;
 }
 
-function decodeAmountsOut(result: string): bigint[] {
+export function decodeAmountsOut(result: string): bigint[] {
   const hex = result.slice(2);
   // First 32 bytes: offset to array
   // Next 32 bytes: array length

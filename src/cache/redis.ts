@@ -8,11 +8,19 @@ export class CacheService {
   }
 
   async get<T>(key: string): Promise<T | null> {
-    const value = await this.redis.get<T>(key);
-    return value ?? null;
+    try {
+      const value = await this.redis.get<T>(key);
+      return value ?? null;
+    } catch {
+      return null;
+    }
   }
 
   async set(key: string, value: unknown, ttlSeconds: number = 1800): Promise<void> {
-    await this.redis.set(key, value, { ex: ttlSeconds });
+    try {
+      await this.redis.set(key, value, { ex: ttlSeconds });
+    } catch {
+      // Cache write failure is non-fatal — scan result still returned to client
+    }
   }
 }
