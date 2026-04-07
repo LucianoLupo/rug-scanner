@@ -159,6 +159,8 @@ app.get('/', (c) => {
 });
 
 app.use('/scan', async (c, next) => {
+  const paymentSig = c.req.header('payment-signature') ?? c.req.header('x-payment');
+  console.log(`[x402] /scan request — payment header: ${paymentSig ? 'present (' + paymentSig.slice(0, 30) + '...)' : 'absent'}`);
   const env = getEnv();
   const middleware = createX402Middleware(env);
   return middleware(c, next);
