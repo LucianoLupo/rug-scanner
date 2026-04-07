@@ -77,16 +77,46 @@ All analysis is our own on-chain queries. No third-party risk APIs.
 - **Trading:** Buy/sell tax simulation via router getAmountsOut
 - **Market:** Price, volume, pair age (DEXScreener)
 
+## Security
+
+- SSRF validation on all address inputs
+- API key masking in error messages
+- Rate limiting (10 req/sec per IP)
+- 5s timeouts on all external calls
+- HTTP status checking on all fetch calls
+- No third-party data resale (all analysis is own on-chain queries)
+
 ## Tech Stack
 
-- TypeScript + Hono + @hono/node-server
-- x402 payment gate (Coinbase CDP facilitator, Base mainnet)
+- TypeScript, Hono, @hono/node-server
+- x402 payment gate (CDP facilitator, ExactEvmScheme, Base mainnet)
 - Alchemy RPCs (Base + Ethereum)
 - Upstash Redis (30min cache)
 - Basescan/Etherscan APIs (source verification)
 - DEXScreener API (market data)
 - EVMole (bytecode analysis)
 - Railway (deploy)
+
+## Testing
+
+140 tests, all fully mocked (zero network calls), runs in ~500ms.
+
+```bash
+npm test
+```
+
+| Category | Tests |
+|----------|-------|
+| Contract analysis | 16 |
+| Holders analysis | 22 |
+| Deployer analysis | 16 |
+| Liquidity analysis | 22 |
+| Alchemy provider | 12 |
+| DEXScreener provider | 11 |
+| Explorer provider | 9 |
+| Scorer (rugs, safe, edge cases) | 30 |
+| Simulation provider | 2 |
+| **Total** | **140** |
 
 ## Setup
 
@@ -116,6 +146,13 @@ npm run dev
 ```bash
 railway up
 ```
+
+## Stats
+
+- 15 source files, ~1,600 lines TypeScript
+- 10 test files, ~2,900 lines
+- 18 commits
+- 140 tests passing
 
 ## License
 
