@@ -1,5 +1,6 @@
-import { paymentMiddlewareFromConfig } from '@x402/hono';
+import { paymentMiddleware, x402ResourceServer } from '@x402/hono';
 import { HTTPFacilitatorClient } from '@x402/core/server';
+import { ExactEvmScheme } from '@x402/evm/exact/server';
 import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../types/index.js';
@@ -41,7 +42,10 @@ export function createX402Middleware(env: Env): MiddlewareHandler {
     createAuthHeaders: () => createCdpAuthHeaders(env.CDP_API_KEY_ID, env.CDP_API_KEY_SECRET),
   });
 
-  return paymentMiddlewareFromConfig(
+  const server = new x402ResourceServer(facilitator)
+    .register(BASE_MAINNET, new ExactEvmScheme());
+
+  return paymentMiddleware(
     {
       'POST /scan': {
         accepts: {
@@ -53,6 +57,6 @@ export function createX402Middleware(env: Env): MiddlewareHandler {
         description: 'Rug Scanner — on-chain token risk analysis',
       },
     },
-    facilitator,
+    server,
   );
 }
