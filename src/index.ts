@@ -113,8 +113,49 @@ const DEFAULT_MARKET: MarketData = {
   price_change_24h_pct: null,
 };
 
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// x402 discovery file
+let x402Discovery: unknown = null;
+try {
+  x402Discovery = JSON.parse(readFileSync(join(__dirname, '..', '.well-known', 'x402.json'), 'utf-8'));
+} catch {
+  // .well-known not found in dist — try from project root
+  try {
+    x402Discovery = JSON.parse(readFileSync(join(__dirname, '..', '..', '.well-known', 'x402.json'), 'utf-8'));
+  } catch {
+    // skip
+  }
+}
+
 app.get('/health', (c) => {
   return c.json({ status: 'ok' });
+});
+
+app.get('/.well-known/x402.json', (c) => {
+  if (!x402Discovery) {
+    return c.json({ error: 'x402 discovery not configured' }, 404);
+  }
+  return c.json(x402Discovery);
+});
+
+app.get('/', (c) => {
+  return c.json({
+    name: 'Rug Scanner',
+    description: 'On-chain token risk analysis API. Pay-per-scan via x402 ($0.05 USDC on Base).',
+    endpoints: {
+      'POST /scan': '$0.05 — Full token risk analysis (contract, holders, liquidity, deployer, trading)',
+      'GET /health': 'Free — Service health check',
+      'GET /.well-known/x402.json': 'Free — x402 discovery file',
+    },
+    chains: ['base', 'ethereum'],
+    verdicts: ['CRITICAL', 'HIGH_RISK', 'MEDIUM_RISK', 'LOW_RISK', 'SAFE'],
+    docs: 'https://github.com/LucianoLupo/rug-scanner',
+  });
 });
 
 app.use('/scan', async (c, next) => {

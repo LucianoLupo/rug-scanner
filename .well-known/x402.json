@@ -1,13 +1,45 @@
 {
-  "accepts": "x402",
-  "version": "1",
+  "x402Version": 2,
   "endpoints": [
     {
       "path": "/scan",
       "method": "POST",
-      "price": "0.05 USDC",
-      "network": "base-sepolia",
-      "facilitator": "https://x402.org/facilitator"
+      "description": "On-chain token risk analysis — contract bytecode, holder concentration, liquidity, deployer history, buy/sell simulation. Returns risk score, verdict, flags, and full data.",
+      "accepts": [
+        {
+          "scheme": "exact",
+          "network": "eip155:8453",
+          "maxAmountRequired": "50000",
+          "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+          "payTo": "0x1BBAC180dC1e393ac2bAD9930BC58f532cc866a3",
+          "maxTimeoutSeconds": 300
+        }
+      ],
+      "requestSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token contract address (0x...)"
+          },
+          "chain": {
+            "type": "string",
+            "enum": ["base", "ethereum"],
+            "description": "Blockchain to analyze on"
+          }
+        },
+        "required": ["token", "chain"]
+      },
+      "responseSchema": {
+        "type": "object",
+        "properties": {
+          "score": { "type": "number", "description": "Flag count" },
+          "verdict": { "type": "string", "enum": ["CRITICAL", "HIGH_RISK", "MEDIUM_RISK", "LOW_RISK", "SAFE"] },
+          "confidence": { "type": "number", "description": "0-1 ratio of completed checks" },
+          "flags": { "type": "array", "description": "Risk flags with severity, type, value, detail" },
+          "data": { "type": "object", "description": "Full analysis: contract, holders, liquidity, deployer, trading, market" }
+        }
+      }
     }
   ]
 }
