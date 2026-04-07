@@ -31,6 +31,8 @@ function getEnv(): Env {
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN ?? '',
     X402_WALLET_ADDRESS: process.env.X402_WALLET_ADDRESS ?? '',
     X402_FACILITATOR_URL: process.env.X402_FACILITATOR_URL ?? '',
+    CDP_API_KEY_ID: process.env.CDP_API_KEY_ID ?? '',
+    CDP_API_KEY_SECRET: process.env.CDP_API_KEY_SECRET ?? '',
   };
 }
 

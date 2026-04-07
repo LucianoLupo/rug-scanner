@@ -89,4 +89,6 @@ export type Env = {
   UPSTASH_REDIS_REST_TOKEN: string;
   X402_WALLET_ADDRESS: string;
   X402_FACILITATOR_URL: string;
+  CDP_API_KEY_ID: string;
+  CDP_API_KEY_SECRET: string;
 };
