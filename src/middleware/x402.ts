@@ -1,6 +1,7 @@
 import { paymentMiddleware, x402ResourceServer } from '@x402/hono';
 import { HTTPFacilitatorClient } from '@x402/core/server';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
+import { declareDiscoveryExtension } from '@x402/extensions/bazaar';
 import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../types/index.js';
@@ -80,6 +81,30 @@ export function createX402Middleware(env: Env): MiddlewareHandler {
           network: BASE_MAINNET,
         },
         description: 'Rug Scanner — on-chain token risk analysis',
+        extensions: declareDiscoveryExtension({
+          bodyType: 'json' as const,
+          input: {
+            token: '0x4200000000000000000000000000000000000006',
+            chain: 'base',
+          },
+          inputSchema: {
+            properties: {
+              token: { type: 'string', description: 'Token contract address (0x...)' },
+              chain: { type: 'string', enum: ['base', 'ethereum'], description: 'Chain to analyze' },
+            },
+            required: ['token', 'chain'],
+          },
+          output: {
+            example: {
+              score: 4,
+              verdict: 'HIGH_RISK',
+              confidence: 1,
+              flags: [
+                { severity: 'high', type: 'lp_unlocked', value: true, detail: 'LP tokens are not locked' },
+              ],
+            },
+          },
+        }),
       },
     },
     server,
