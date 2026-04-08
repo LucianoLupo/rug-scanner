@@ -31,11 +31,20 @@ async function createCdpAuthHeaders(
   };
 }
 
+let cachedMiddleware: MiddlewareHandler | null = null;
+
 export function createX402Middleware(env: Env): MiddlewareHandler {
   if (!env.X402_WALLET_ADDRESS || !env.CDP_API_KEY_ID || !env.CDP_API_KEY_SECRET) {
     console.log('x402 payment gate disabled — missing wallet or CDP keys');
     return async (_c, next) => { await next(); };
   }
+
+  if (cachedMiddleware) return cachedMiddleware;
+
+  console.log('[x402] Initializing payment gate...');
+  console.log(`[x402] Wallet: ${env.X402_WALLET_ADDRESS}`);
+  console.log(`[x402] CDP Key ID: ${env.CDP_API_KEY_ID.slice(0, 8)}...`);
+  console.log(`[x402] Facilitator: ${CDP_FACILITATOR_URL}`);
 
   const facilitator = new HTTPFacilitatorClient({
     url: CDP_FACILITATOR_URL,
@@ -45,7 +54,23 @@ export function createX402Middleware(env: Env): MiddlewareHandler {
   const server = new x402ResourceServer(facilitator)
     .register(BASE_MAINNET, new ExactEvmScheme());
 
-  return paymentMiddleware(
+  server
+    .onAfterVerify(async (ctx) => {
+      if (!ctx.result.isValid) {
+        console.error('[x402] Verify rejected:', ctx.result.invalidReason);
+      }
+    })
+    .onVerifyFailure(async (ctx) => {
+      console.error('[x402] Verify FAILED:', ctx.error.message);
+    })
+    .onAfterSettle(async (ctx) => {
+      console.log('[x402] Settled — tx:', ctx.result.transaction);
+    })
+    .onSettleFailure(async (ctx) => {
+      console.error('[x402] Settle FAILED:', ctx.error.message);
+    });
+
+  cachedMiddleware = paymentMiddleware(
     {
       'POST /scan': {
         accepts: {
@@ -59,4 +84,7 @@ export function createX402Middleware(env: Env): MiddlewareHandler {
     },
     server,
   );
+
+  console.log('[x402] Payment gate initialized');
+  return cachedMiddleware;
 }

@@ -5,7 +5,8 @@
  * Exposes the rug scanner as an MCP tool for Claude Code, Cursor, etc.
  * Calls the deployed API at rug-scanner-production.up.railway.app
  *
- * Install: claude mcp add rug-scanner -- npx tsx mcp/server.ts
+ * Install: npx @lucianolupo/rug-scanner-mcp
+ * Claude Code: claude mcp add rug-scanner -- npx @lucianolupo/rug-scanner-mcp
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
