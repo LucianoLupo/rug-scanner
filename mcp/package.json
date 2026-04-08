@@ -1,5 +1,5 @@
 {
-  "name": "@lucianolupo/rug-scanner-mcp",
+  "name": "rug-scanner-mcp",
   "version": "0.1.0",
   "description": "MCP server for on-chain token rug pull risk analysis. 7 parallel checks, deterministic scoring. $0.05 USDC per scan via x402 on Base.",
   "type": "module",

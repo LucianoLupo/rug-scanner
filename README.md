@@ -149,7 +149,7 @@ npm run dev
 Use Rug Scanner as a tool in Claude Code, Cursor, or any MCP client:
 
 ```bash
-claude mcp add rug-scanner -- npx @lucianolupo/rug-scanner-mcp
+claude mcp add rug-scanner -- npx rug-scanner-mcp
 ```
 
 ## Deploy
