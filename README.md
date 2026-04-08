@@ -7,8 +7,11 @@ On-chain token risk analysis API. Pay-per-scan via x402 (USDC on Base).
 ## Endpoints
 
 ```
-GET  /health  → 200 {"status":"ok"}
-POST /scan    → 402 Payment Required ($0.05 USDC on Base)
+GET  /                             → Landing page (HTML) or API info (JSON)
+GET  /health                       → 200 {"status":"ok"}
+POST /scan                         → 402 Payment Required ($0.05 USDC on Base)
+GET  /.well-known/x402.json        → x402 discovery file
+GET  /.well-known/agent-card.json  → A2A agent card
 ```
 
 ### Scan a token
@@ -141,6 +144,14 @@ npm run dev
 | `CDP_API_KEY_SECRET` | Yes | CDP secret for JWT signing |
 | `PORT` | No | Server port (default: 3000) |
 
+## MCP Server
+
+Use Rug Scanner as a tool in Claude Code, Cursor, or any MCP client:
+
+```bash
+claude mcp add rug-scanner -- npx @lucianolupo/rug-scanner-mcp
+```
+
 ## Deploy
 
 ```bash
@@ -156,4 +167,4 @@ railway up
 
 ## License
 
-Private.
+MIT
